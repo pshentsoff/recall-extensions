@@ -20,7 +20,7 @@ jQuery(function(){
         var id_attr = jQuery(this).attr('id');
         var post_id = parseInt(id_attr.replace(/\D+/g,''));
         var fee = jQuery('.post-fee-'+post_id).attr('value');
-        var dataString_count = 'action=re_set_post_fee&post_id='+post_id+'&fee='+fee;
+        var dataString_count = 'action=re_set_post_fee&post_id='+post_id+'&post_fee='+fee;
 
         jQuery.ajax({
             type: 'POST',
@@ -29,7 +29,9 @@ jQuery(function(){
             url: '/wp-admin/admin-ajax.php',
             success: function(data){
                 if(data['result'] == 'true'){
+//                    if(data['error_msg'] != '') alert(data['error_msg']);
                     jQuery('.post-fee-'+data['post_id']).val(data['post_fee']);
+
                 } else {
                     alert(data['error_msg']);
                 }

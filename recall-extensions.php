@@ -3,7 +3,7 @@
 Plugin Name: Recall Extensions
 Plugin URI:
 Description: Plugin extends some WP-Recall, Recall-Magazine functionality.
-Version: 0.1.1
+Version: 0.1.2
 Author: Vadim Pshentsov
 Author URI: http://pshentsoff.ru
 License: Apache License, Version 2.0
@@ -67,11 +67,11 @@ function re_metaboxes_init() {
  */
 function re_post_fee_show($post, $box = null) {
 
-    $post_fee = get_post_meta($post->post_id, '_post_fee', true);
+    $post_fee = get_post_meta($post->ID, '_post_fee', true);
     $post_fee = !empty($post_fee) ? $post_fee : 0;
 
-    $post_fee_html = '<input type="text" class="post-fee-'.$post->post_id.'" name="post-fee-'.$post->post_id.'" size="4" value="'.$post_fee.'">';
-    $post_fee_html .= '<input type="button" class="set_post_fee" id="set-post-fee'.$post->post_id.'" value="'.__('Назначить').'">' ;
+    $post_fee_html = '<input type="text" class="post-fee-'.$post->ID.'" name="post-fee-'.$post->ID.'" size="4" value="'.$post_fee.'">';
+    $post_fee_html .= '<input type="button" class="set_post_fee" id="set-post-fee-'.$post->ID.'" value="'.__('Назначить').'">' ;
 
     echo $post_fee_html;
 }
@@ -155,14 +155,21 @@ function re_set_post_fee() {
         }
 
         // Запоминаем значение вознаграждения
-        if(!update_post_meta($post_id, '_post_fee', $post_fee)) {
-            $answer['error_msg'] = __('Ошибка при изменении значения вознаграждения.');
-            echo json_encode($answer);
-            exit;
+        $prev_post_fee = get_post_meta($post_id, '_post_fee', true);
+        if($prev_post_fee != $post_fee) {
+            if(!update_post_meta($post_id, '_post_fee', $post_fee)) {
+                $answer['error_msg'] = __('Ошибка при изменении значения вознаграждения.');
+                echo json_encode($answer);
+                exit;
+            } else {
+                $answer['result'] = 'true';
+                $answer['error_msg'] = __('Значение вознаграждения не изменилось.');
+                echo json_encode($answer);
+                exit;
+            }
         }
 
         // Корректируем личный счет
-        $prev_post_fee = get_post_meta($post_id, '_post_fee', true);
         $post = get_post($post_id);
         $user_count = $wpdb->get_var("SELECT count FROM ".RMAG_PREF ."user_count WHERE user = '$post->post_author'");
         if($prev_post_fee) {
@@ -185,13 +192,13 @@ function re_set_post_fee() {
 add_action('wp_ajax_re_set_post_fee', 're_set_post_fee');
 add_action('wp_ajax_nopriv_re_set_post_fee', 're_set_post_fee');
 
-//@todo remove debug function and hook
+//remove debug function and hook
 /**
  * Выводим в консоль для определения нужных параметров
  */
-add_action('in_admin_header', 'my_get_current_screen');
+/*add_action('in_admin_header', 'my_get_current_screen');
 function my_get_current_screen(){
     $screen_info = get_current_screen();
 
     fb('$screen_info = '.print_r($screen_info, true));
-}
+}*/
