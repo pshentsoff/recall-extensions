@@ -3,12 +3,12 @@
 Plugin Name: Recall Extensions
 Plugin URI:
 Description: Plugin extends some WP-Recall, Recall-Magazine functionality.
-Version: 0.2.9
+Version: 0.3.2
 Author: Vadim Pshentsov
 Author URI: http://pshentsoff.ru
 License: Apache License, Version 2.0
 Wordpress version supported: 3.6 and above
-Text Domain: comments-extensions
+Text Domain: recall-extensions
 Domain Path: /languages
 */
 /**
@@ -320,3 +320,17 @@ function re_ajax_pay_request() {
 }
 add_action('wp_ajax_re_pay_request', 're_ajax_pay_request');
 
+function re_get_the_author_user_login($value, $user_id) {
+
+    if ( ! $user_id ) {
+        global $authordata;
+        $user_id = isset( $authordata->ID ) ? $authordata->ID : 0;
+    } else {
+        $authordata = get_userdata( $user_id );
+    }
+
+    $value = $authordata->display_name;
+
+    return $value;
+}
+add_filter('get_the_author_user_login', 're_get_the_author_user_login', 10, 2);

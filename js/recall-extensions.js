@@ -16,26 +16,32 @@
 
 jQuery(document).ready(function() {
     /* Добавляем кнопку заказа выплаты в виджет личного счета */
-    jQuery('.usercount').append('&nbsp;<input type="button" id="re_pay_request" value="Заказать выплату"/>');
+    if(jQuery('.usercount')) {
+        jQuery('.usercount').append('&nbsp;<input type="button" id="re_pay_request" value="Заказать выплату"/>');
 
-    jQuery('#re_pay_request').click(function(){
+        jQuery('#re_pay_request').click(function(){
 
-        var data = 'action=re_pay_request';
+            var data = 'action=re_pay_request';
 
-        jQuery.ajax({
-            type: 'POST',
-            data: data,
-            dataType: 'json',
-            url: '/wp-admin/admin-ajax.php',
-            success: function(data){
-                if(data['result'] == 'true'){
-                    alert(data['msg']);
-                } else {
-                    alert(data['error_msg']);
+            jQuery.ajax({
+                type: 'POST',
+                data: data,
+                dataType: 'json',
+                url: '/wp-admin/admin-ajax.php',
+                success: function(data){
+                    if(data['result'] == 'true'){
+                        alert(data['msg']);
+                    } else {
+                        alert(data['error_msg']);
+                    }
                 }
-            }
-        });
+            });
 
-    });
+        });
+    }
+
+    if(jQuery('.single')) {
+        jQuery('.single').html('Профиль пользователя');
+    }
 
 });
