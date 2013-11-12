@@ -67,9 +67,14 @@ jQuery(function(){
             url: '/wp-admin/admin-ajax.php',
             success: function(data){
                 if(data['result'] == 'true'){
-                    jQuery('.pay-request-'+data['user_id']).html(data['msg']);
+                    if(data['decision'] == 'accept') {
+                        jQuery('.pay-request-'+data['user_id']).html('<span class="pay-request-accepted">'+data['msg']+'</span>');
+                    } else {
+                        jQuery('.pay-request-'+data['user_id']).html(data['msg']);
+                    }
                     jQuery('#pay-request-user-'+data['user_id']+'-accept').remove();
                     jQuery('#pay-request-user-'+data['user_id']+'-decline').remove();
+                    jQuery('.balance-'+data['user_id']).html('0');
                 } else {
                     alert(data['error_msg']);
                 }
@@ -77,4 +82,7 @@ jQuery(function(){
         });
     }
 
+    jQuery(document).ready(function() {
+        //
+    });
 });

@@ -39,9 +39,9 @@ jQuery(document).ready(function() {
 
         });
     }
-
+    /* Удаляем обращение user_login */
     if(jQuery('.single')) {
-        jQuery('.single').html('Профиль пользователя');
+        jQuery('h1.single').html('Профиль пользователя');
     }
 
 });

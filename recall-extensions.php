@@ -3,7 +3,7 @@
 Plugin Name: Recall Extensions
 Plugin URI:
 Description: Plugin extends some WP-Recall, Recall-Magazine functionality.
-Version: 0.3.2
+Version: 0.3.6
 Author: Vadim Pshentsov
 Author URI: http://pshentsoff.ru
 License: Apache License, Version 2.0
@@ -34,12 +34,14 @@ define('RE_PAY_REQUEST_SET', 1);
 define('RE_PAY_REQUEST_SUSPENDED', 2);
 define('RE_PAY_REQUEST_ACCEPTED', 3);
 
+//require_once('includes/class-re-users-list-table.php');
+
 if(is_admin()) {
     /**
      * Вешаем админские хуки
      */
     // js
-    add_action('admin_head', 're_js_enqueue_admin');
+    add_action('admin_head', 're_enqueue_admin');
     // Дополнительные метабоксы
     add_action('add_meta_boxes', 're_metaboxes_init');
 
@@ -53,9 +55,12 @@ if(is_admin()) {
 }
 
 /**
- * Подключаем скрипты к админке
+ * Подключаем скрипты  и стили к админке
  */
-function re_js_enqueue_admin() {
+function re_enqueue_admin() {
+
+    wp_enqueue_style('re_admin_css', plugins_url('css/admin.css', __FILE__));
+
     wp_enqueue_script( 'jquery' );
     wp_enqueue_script( 're_admin_ajax', plugins_url('js/admin.js', __FILE__) );
 }
@@ -151,24 +156,34 @@ function re_users_admin_columns($columns) {
  */
 function re_users_admin_columns_content( $custom_column, $column_name, $user_id ){
 
-    $column_content = $custom_column;
-
     switch( $column_name ){
         case 'pay_requests':
+
             $pay_request = get_user_meta($user_id, '_pay_request', true);
+            $sum = get_user_meta($user_id, '_last_pay', true);
+            $pay_date = get_user_meta($user_id, '_last_pay_date', true);
+            //@todo Общую сумму вылат?
+
             if($pay_request == RE_PAY_REQUEST_SET) {
-                $column_content = '<span class="pay-request-'.$user_id.'">'.__('Заявка на выплату').'</span><br />';
-                $column_content .= '<input type="button" class="pay-request-accept" id="pay-request-user-'.$user_id.'-accept" value="'.__('Удовлетворить').'">' ;
-                $column_content .= '&nbsp;<input type="button" class="pay-request-decline" id="pay-request-user-'.$user_id.'-decline" value="'.__('Отклонить').'">' ;
+                $custom_column = '<span class="pay-request-'.$user_id.'">';
+                $custom_column .= '<span class="pay-request-new">'.__('Заявка на выплату.<br />').'</span>';
+                if($pay_date && $sum) {
+                    $custom_column .= sprintf(__('Последняя выплата %s. Дата выплаты %s'), $sum, date('d-m-Y', (int)$pay_date));
+                }
+                $custom_column .= '</span><br />';
+                $custom_column .= '<input type="button" class="pay-request-accept" id="pay-request-user-'.$user_id.'-accept" value="'.__('Удовлетворить').'">';
+                $custom_column .= '&nbsp;<input type="button" class="pay-request-decline" id="pay-request-user-'.$user_id.'-decline" value="'.__('Отклонить').'">';
             } elseif($pay_request == RE_PAY_REQUEST_ACCEPTED) {
-                $column_content = '<span class="pay-request-'.$user_id.'">'.__('Заявка удовлетворена').'</span><br />';
+                $custom_column = '<span class="pay-request-'.$user_id.' pay-request-accepted">';
+                $custom_column .= sprintf(__('Заявка удовлетворена.<br />Последняя выплата %s. Дата выплаты %s'), $sum, date('d-m-Y', (int)$pay_date));
+                $custom_column .= '</span><br />';
             } elseif($pay_request == RE_PAY_REQUEST_DECLINED) {
-                $column_content = '<span class="pay-request-'.$user_id.'">'.__('Заявка отклонена').'</span><br />';
+                $custom_column = '<span class="pay-request-'.$user_id.'">'.__('Заявка отклонена').'</span><br />';
             }
             break;
     }
 
-    return $column_content;
+    return $custom_column;
 }
 
 /**
@@ -250,9 +265,10 @@ function re_ajax_set_post_fee() {
     exit;
 }
 add_action('wp_ajax_re_set_post_fee', 're_ajax_set_post_fee');
-//add_action('wp_ajax_nopriv_re_set_post_fee', 're_ajax_set_post_fee');
 
 function re_ajax_pay_request_satisfaction() {
+
+    global $wpdb;
 
     $answer = array(
         'result' => 'false',
@@ -260,12 +276,24 @@ function re_ajax_pay_request_satisfaction() {
         'msg' => '',
         'decision' => $_POST['decision'],
         'user_id' => $_POST['user_id'],
+        'last_pay' => 0,
+        'pay_date' => '',
     );
 
     if($answer['decision'] == 'accept') {
-        //@todo Собственно выплаты через функции mag-recall-modul
+        //@todo Собственно выплаты через функции mag-recall-modul?
+        // Сбрасываем счет пользователя запоминая последнюю выплату
+        $now = time();
+        $user_count = $wpdb->get_var(sprintf("SELECT count FROM ".RMAG_PREF ."user_count WHERE user = '%d'", $answer['user_id']));
+        update_user_meta($answer['user_id'], '_last_pay', $user_count);
+        update_user_meta($answer['user_id'], '_last_pay_date', $now);
+        $wpdb->update(RMAG_PREF.'user_count', array('count' => 0), array('user' => $answer['user_id']));
+        //@todo Общую сумму выплат?
+
+        // Корректируем поле заявки
         update_user_meta($answer['user_id'], '_pay_request', RE_PAY_REQUEST_ACCEPTED);
-        $answer['msg'] = __('Заявка удовлетворена.');
+        // Ответ json/ajax
+        $answer['msg'] = sprintf(__('Заявка удовлетворена. Выплачено %s. Дата выплаты %s'), $user_count, date('d-m-Y', $now));
         $answer['result'] = 'true';
     } else {
         update_user_meta($answer['user_id'], '_pay_request', RE_PAY_REQUEST_DECLINED);
@@ -309,6 +337,8 @@ function re_ajax_pay_request() {
         'error_msg' => '',
         'msg' => '',
     );
+
+    //@todo добавить дату запроса
 
     if(update_user_meta($user_ID, '_pay_request', RE_PAY_REQUEST_SET)) {
         $answer['result'] = 'true';
